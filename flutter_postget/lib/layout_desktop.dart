@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -50,9 +51,7 @@ class _LayoutDesktopState extends State<LayoutDesktop> {
 
   // Funció per carregar l'arxiu seleccionat amb una sol·licitud POST
   Future<void> uploadFile(AppData appData) async {
-    try {
-      appData.load("POST", selectedFile: await pickFile());
-    } catch (e) {
+    try {} catch (e) {
       if (kDebugMode) {
         print("Excepció (uploadFile): $e");
       }
@@ -140,10 +139,23 @@ class _LayoutDesktopState extends State<LayoutDesktop> {
   }
 
   // Función para agregar mensaje y limpiar la barra de texto
-  void _sendMessage(AppData appData) {
+  Future<void> _sendMessage(AppData appData) async {
     String texto = _textController.text;
     if (texto.isNotEmpty) {
+      // Crear un JSON con la pregunta y el mensaje
+      Map<String, dynamic> jsonBody = {
+        "type": "test",
+        "mensaje": texto,
+      };
+
+      // Convertir el JSON a una cadena
+      String jsonString = json.encode(jsonBody);
+
       appData.addMessage(texto);
+
+      // Enviar la cadena JSON al servidor
+      var response = await appData.sendTextToServer(appData.url, jsonString);
+
       _textController.clear();
     }
   }

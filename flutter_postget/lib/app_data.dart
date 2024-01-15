@@ -16,6 +16,8 @@ class AppData with ChangeNotifier {
   bool loadingPost = false;
   bool loadingFile = false;
 
+  var url = 'http://localhost:3000/data';
+
   dynamic dataGet;
   dynamic dataPost;
   dynamic dataFile;
@@ -67,31 +69,30 @@ class AppData with ChangeNotifier {
 
   // Funció per fer crides tipus 'POST' amb un arxiu adjunt,
   //i agafar la informació a mida que es va rebent
-  Future<String> loadHttpPostByChunks(String url, File file) async {
-    var request = http.MultipartRequest('POST', Uri.parse(url));
+  Future<String> sendTextToServer(String url, String text) async {
+    try {
+      // Crear la solicitud POST
+      var request = http.Request('POST', Uri.parse(url));
 
-    // Afegir les dades JSON com a part del formulari
-    request.fields['data'] = '{"type":"test"}';
+      // Configurar el encabezado y el cuerpo de la solicitud
+      request.headers['Content-Type'] = 'application/json';
+      request.body = jsonEncode({'data': text});
 
-    // Adjunta l'arxiu com a part del formulari
-    var stream = http.ByteStream(file.openRead());
-    var length = await file.length();
-    var multipartFile = http.MultipartFile('file', stream, length,
-        filename: file.path.split('/').last,
-        contentType: MediaType('application', 'octet-stream'));
-    request.files.add(multipartFile);
+      // Enviar la solicitud y esperar la respuesta
+      var response = await request.send();
 
-    var response = await request.send();
-
-    if (response.statusCode == 200) {
-      // La sol·licitud ha estat exitosa
-      var responseData = await response.stream.toBytes();
-      var responseString = utf8.decode(responseData);
-      return responseString;
-    } else {
-      // La sol·licitud ha fallat
-      throw Exception(
-          "Error del servidor (appData/loadHttpPostByChunks): ${response.reasonPhrase}");
+      if (response.statusCode == 200) {
+        // La solicitud ha sido exitosa
+        var responseData = await response.stream.toBytes();
+        var responseString = utf8.decode(responseData);
+        return responseString;
+      } else {
+        // La solicitud ha fallado
+        throw Exception("Error del servidor: ${response.reasonPhrase}");
+      }
+    } catch (error) {
+      // Manejar errores en la solicitud
+      throw Exception("Error al enviar la solicitud: $error");
     }
   }
 
@@ -108,45 +109,6 @@ class AppData with ChangeNotifier {
       return jsonData;
     } catch (e) {
       throw Exception("Excepció (appData/readJsonAsset): $e");
-    }
-  }
-
-  // Carregar dades segons el tipus que es demana
-  void load(String type, {File? selectedFile}) async {
-    switch (type) {
-      case 'GET':
-        loadingGet = true;
-        notifyListeners();
-
-        // TODO: Cal modificar el funcionament d'aquí
-        // per tal d'actualitzar el valor de 'dataGet' a mida que es va rebent
-        // la informació del servidor, enlloc de mostrar 'Loading ...'
-        dataGet = await loadHttpGetByChunks(
-            'http://localhost:3000/llistat?cerca=motos&color=vermell');
-
-        loadingGet = false;
-        notifyListeners();
-        break;
-      case 'POST':
-        loadingPost = true;
-        notifyListeners();
-
-        dataPost = await loadHttpPostByChunks(
-            'http://localhost:3000/data', selectedFile!);
-
-        loadingPost = false;
-        notifyListeners();
-        break;
-      case 'FILE':
-        loadingFile = true;
-        notifyListeners();
-
-        var fileData = await readJsonAsset("assets/data/example.json");
-
-        loadingFile = false;
-        dataFile = fileData;
-        notifyListeners();
-        break;
     }
   }
 }

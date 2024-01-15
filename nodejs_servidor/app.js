@@ -1,6 +1,10 @@
 const express = require('express')
 const multer = require('multer');
-const url = require('url')
+const url = require('url');
+const axios = require('axios');
+
+
+
 
 const app = express()
 const port = process.env.PORT || 3000
@@ -51,25 +55,7 @@ async function getIeti(req, res) {
 // Configurar direcció tipus 'GET' amb la URL ‘/llistat’ i paràmetres URL 
 // http://localhost:3000/llistat?cerca=cotxes&color=blau
 // http://localhost:3000/llistat?cerca=motos&color=vermell
-app.get('/llistat', getLlistat)
-async function getLlistat(req, res) {
-  let query = url.parse(req.url, true).query;
 
-  // Aquí s'executen totes les accions necessaries
-  // però tenint en compte els valors dels variables de la URL
-  // que guardem a l'objecte 'query'
-
-  if (query.cerca && query.color) {
-    // Així es retorna un text per parts (chunks)
-    res.writeHead(200, { 'Content-Type': 'text/plain; charset=UTF-8' });
-    res.write(`result: "Aquí tens el llistat de ${query.cerca} de color ${query.color}"`)
-    res.write(`\n list: ["item0", "item1", "item2"]`)
-    res.end(`\n end: "Això és tot"`)
-  } else {
-    // Així es retorna un objecte JSON directament
-    res.status(400).json({ result: "Paràmetres incorrectes" })
-  }
-}
 
 // Configurar direcció tipus 'POST' amb la URL ‘/data'
 // Enlloc de fer una crida des d'un navegador, fer servir 'curl'
@@ -77,29 +63,44 @@ async function getLlistat(req, res) {
 // Esto es importate para que se envien los mensajes poco a poco
 
 app.post('/data', upload.single('file'), async (req, res) => {
-  // Processar les dades del formulari i l'arxiu adjunt
   const textPost = req.body;
   const uploadedFile = req.file;
-  let objPost = {}
+  let objPost = {};
 
   try {
-    objPost = JSON.parse(textPost.data)
+    console.log('textPost.data:', textPost.data);  // Agrega esta línea para imprimir el contenido
+    objPost = JSON.parse(textPost.data);
   } catch (error) {
-    res.status(400).send('Sol·licitud incorrecta.')
-    console.log(error)
-    return
+    console.log('Error parsing JSON:', error);  // Agrega esta línea para imprimir el error
+    res.status(400).send('Solicitud incorrecta.');
+    return;
   }
 
-  // Aquí s'executen totes les accions necessaries
-  // però tenint en compte el tipus de petició 
-  // (en aquest exemple només 'test')
+  if (objPost.type == 'test') {
+    try {
+      // Realiza la solicitud a la API externa con el mensaje proporcionado
+      
+      const apiResponse = await axios.post('http://localhost:11434/api/generate', {
+        model: 'mistral',
+        prompt: 'hola como te llamas?', // Utiliza el texto proporcionado en lugar de 'prompt'
+      });
 
-  // A l'exercici 'XatIETI' hi hauràn dos tipus de petició:
-  // - 'conversa' que retornara una petició generada per 'mistral'
-  // - 'imatge' que retornara una imatge generada per 'llava'
+      // Maneja la respuesta de la API según tus necesidades
+      console.log('hola')
+      console.log('API Response:', apiResponse.data);
 
-  if (objPost.type === 'test') {
-    /*
+      
+    } catch (error) {
+      console.error('Error al realizar la solicitud a la API:', error);
+      res.status(500).send('Error interno del servidor.');
+    }
+  } else {
+    res.status(400).send('Solicitud incorrecta. Se requiere la propiedad "texto".');
+  }
+});
+
+
+ /*
     if (objPost.type === 'test') {
       if (uploadedFile) {
         let fileContent = uploadedFile.buffer.toString('utf-8');
@@ -126,19 +127,5 @@ app.post('/data', upload.single('file'), async (req, res) => {
       res.end();
     }
     
-    */
-    if (uploadedFile) {
-      let fileContent = uploadedFile.buffer.toString('utf-8')
-      console.log('Contingut de l\'arxiu adjunt:')
-      console.log(fileContent)
-    }
-    res.writeHead(200, { 'Content-Type': 'text/plain; charset=UTF-8' })
-    res.write("POST First line\n")
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    res.write("POST Second line\n")
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    res.end("POST Last line\n")
-  } else {
-    res.status(400).send('Sol·licitud incorrecta.')
-  }
-})
+*/
+  
