@@ -76,56 +76,42 @@ app.post('/data', upload.single('file'), async (req, res) => {
     return;
   }
 
-  if (objPost.type == 'test') {
+  if (objPost.type == 'test' && objPost.mensaje) {
     try {
-      // Realiza la solicitud a la API externa con el mensaje proporcionado
-      
+      console.log(objPost.mensaje);
+      // Utiliza el mensaje proporcionado en lugar del prompt fijo
       const apiResponse = await axios.post('http://localhost:11434/api/generate', {
         model: 'mistral',
-        prompt: 'hola como te llamas?', // Utiliza el texto proporcionado en lugar de 'prompt'
+        prompt: objPost.mensaje,
       });
 
-      // Maneja la respuesta de la API según tus necesidades
-      console.log('hola')
-      console.log('API Response:', apiResponse.data);
+      // Almacena todas las respuestas en un array
+      const responses = [];
+      apiResponse.data.split('\n').forEach(line => {
+        if (line.trim() !== '') {
+          const responseObj = JSON.parse(line);
+          responses.push(responseObj);
+          // Imprime cada respuesta en el servidor
+          
+        }
+      });
 
-      
+      // Construye un objeto JSON con la estructura deseada
+      const jsonResponse = {
+        type: 'respuesta',
+        mensaje: responses.map(response => response.response).join(''),
+      };
+      console.log(jsonResponse);
+      // Envía el objeto JSON como respuesta
+      res.status(200).json(jsonResponse);
+      responses.clear;
     } catch (error) {
       console.error('Error al realizar la solicitud a la API:', error);
-      res.status(500).send('Error interno del servidor.');
+      res.status(500).send('Error interno del seridor.');
     }
   } else {
-    res.status(400).send('Solicitud incorrecta. Se requiere la propiedad "texto".');
+    res.status(400).send('Solicitud incorrecta. Se requiere la propiedad "type" y "mensaje".');
   }
 });
 
 
- /*
-    if (objPost.type === 'test') {
-      if (uploadedFile) {
-        let fileContent = uploadedFile.buffer.toString('utf-8');
-        console.log('Contenido del archivo adjunto:');
-        
-        // Imprimir el contenido del archivo letra por letra
-        for (let i = 0; i < fileContent.length; i++) {
-          console.log(fileContent.charAt(i));
-          // Esperar un tiempo antes de imprimir el siguiente carácter
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-      }
-    
-      // Imprimir los mensajes línea por línea
-      const lines = ["POST First line", "POST Second line", "POST Last line"];
-      res.writeHead(200, { 'Content-Type': 'text/plain; charset=UTF-8' });
-    
-      for (const line of lines) {
-        res.write(line + '\n');
-        // Esperar un tiempo antes de imprimir la siguiente línea
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    
-      res.end();
-    }
-    
-*/
-  

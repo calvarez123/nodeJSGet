@@ -21,6 +21,7 @@ class LayoutDesktop extends StatefulWidget {
 
 class _LayoutDesktopState extends State<LayoutDesktop> {
   TextEditingController _textController = TextEditingController();
+  TextEditingController _receivedMessageController = TextEditingController();
   // Return a custom button
   Widget buildCustomButton(String buttonText, VoidCallback onPressedAction) {
     return SizedBox(
@@ -83,10 +84,21 @@ class _LayoutDesktopState extends State<LayoutDesktop> {
                     },
                   ),
                 ),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: _receivedMessageController.text.length,
+                    itemBuilder: (context, index) {
+                      return ListTile(
+                        leading: Icon(Icons.android),
+                        title: Text(_receivedMessageController.text[index]),
+                      );
+                    },
+                  ),
+                ),
 
                 SizedBox(
                     height:
-                        16), // Separación entre la lista de mensajes y el resto de los elementos
+                        30), // Separación entre la lista de mensajes y el resto de los elementos
 
                 // Barra para poner texto
                 Row(
@@ -139,6 +151,8 @@ class _LayoutDesktopState extends State<LayoutDesktop> {
   }
 
   // Función para agregar mensaje y limpiar la barra de texto
+  // Método _sendMessage modificado
+  // Función para agregar mensaje y limpiar la barra de texto
   Future<void> _sendMessage(AppData appData) async {
     String texto = _textController.text;
     if (texto.isNotEmpty) {
@@ -155,16 +169,38 @@ class _LayoutDesktopState extends State<LayoutDesktop> {
 
       // Enviar la cadena JSON al servidor
       var response = await appData.sendTextToServer(appData.url, jsonString);
+      // Simular escritura de la respuesta letra por letra
+      int contador = 0;
 
+      // Parsear el JSON de la respuesta
+      Map<String, dynamic> jsonResponse = json.decode(response);
+
+      // Obtener el mensaje del JSON de la respuesta
+      String mensaje = jsonResponse["mensaje"];
+      print(mensaje);
+
+      print(mensaje.length);
+      for (int i = 0; i < mensaje.length; i++) {
+        if (contador == 0) {
+          appData.addMessage(mensaje.substring(i));
+          contador++;
+        }
+        appData.addTextToMessage(1, mensaje.substring(0, i + 1));
+
+        appData.notifyListeners();
+        await Future.delayed(const Duration(
+            milliseconds:
+                10)); // Notificar a los escuchadores para actualizar la interfaz
+      }
       _textController.clear();
     }
   }
+}
 
-  // Función para crear un botón con icono
-  Widget buildIconButton(IconData icon, VoidCallback onPressedAction) {
-    return IconButton(
-      onPressed: onPressedAction,
-      icon: Icon(icon),
-    );
-  }
+// Función para crear un botón con icono
+Widget buildIconButton(IconData icon, VoidCallback onPressedAction) {
+  return IconButton(
+    onPressed: onPressedAction,
+    icon: Icon(icon),
+  );
 }

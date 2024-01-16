@@ -32,6 +32,13 @@ class AppData with ChangeNotifier {
     notifyListeners(); // Notify listeners to update the UI
   }
 
+  void addTextToMessage(int index, String additionalText) {
+    if (index >= 0 && index < _messages.length) {
+      _messages[index] += additionalText;
+      notifyListeners(); // Notificar a los escuchadores para actualizar la interfaz
+    }
+  }
+
   // Funció per fer crides tipus 'GET' i agafar la informació a mida que es va rebent
   Future<String> loadHttpGetByChunks(String url) async {
     var httpClient = HttpClient();
@@ -111,4 +118,6 @@ class AppData with ChangeNotifier {
       throw Exception("Excepció (appData/readJsonAsset): $e");
     }
   }
+
+  // Función para agregar un mensaje con simulación de escritura
 }
