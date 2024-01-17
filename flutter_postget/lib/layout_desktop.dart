@@ -75,10 +75,6 @@ class _LayoutDesktopState extends State<LayoutDesktop> {
   Widget build(BuildContext context) {
     AppData appData = Provider.of<AppData>(context);
 
-    // Controlador de Scroll
-
-    // Función para desplazar la lista hacia abajo
-
     return MaterialApp(
       home: Scaffold(
         body: Center(
@@ -86,20 +82,71 @@ class _LayoutDesktopState extends State<LayoutDesktop> {
             width: 600,
             height: 800,
             padding: const EdgeInsets.all(16.0),
+            decoration: BoxDecoration(
+              color: Colors.grey[200], // Fondo del contenedor
+              borderRadius: BorderRadius.circular(16.0),
+            ),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                // Título del chat
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: Text(
+                    "XatIETI",
+                    style: TextStyle(
+                      fontSize: 24.0,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+
                 // Área de mensajes
                 Expanded(
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    itemCount: appData.messages?.length ?? 0,
-                    itemBuilder: (context, index) {
-                      return ListTile(
-                        leading: Icon(Icons.android),
-                        title: Text(appData.messages?[index] ?? ""),
-                      );
-                    },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(8.0),
+                    decoration: BoxDecoration(
+                      color: Colors.white, // Fondo del área de mensajes
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      itemCount: appData.messages?.length ?? 0,
+                      itemBuilder: (context, index) {
+                        IconData iconData =
+                            index.isEven ? Icons.android : Icons.apple;
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor:
+                                    Colors.blue, // Color del círculo del icono
+                                child: Icon(
+                                  iconData,
+                                  color: Colors.white, // Color del icono
+                                ),
+                              ),
+                              title: Text(
+                                appData.messages?[index] ?? "",
+                                style: TextStyle(
+                                  fontSize: 16.0,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                            ),
+
+                            SizedBox(height: 4), // Espacio entre elementos
+                            Divider(
+                                color: Colors.grey[300],
+                                height: 1), // Añade espacio entre mensajes
+                          ],
+                        );
+                      },
+                    ),
                   ),
                 ),
 
@@ -110,10 +157,12 @@ class _LayoutDesktopState extends State<LayoutDesktop> {
                   children: [
                     Expanded(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8.0, vertical: 4.0),
                         decoration: BoxDecoration(
+                          color: Colors.white, // Fondo del campo de texto
                           borderRadius: BorderRadius.circular(8.0),
-                          border: Border.all(color: Colors.grey),
                         ),
                         child: Row(
                           children: [
@@ -122,32 +171,45 @@ class _LayoutDesktopState extends State<LayoutDesktop> {
                                 controller: _textController,
                                 onSubmitted: (text) {
                                   _sendMessage(appData);
-                                  _scrollToBottom(); // Desplazar hacia abajo al enviar un mensaje
+                                  _scrollToBottom();
                                 },
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   hintText: 'Escribe tu mensaje...',
                                   border: InputBorder.none,
                                 ),
+                                enabled: !generatingMessage,
                               ),
                             ),
                             SizedBox(width: 8),
-                            buildIconButton(Icons.file_upload, () async {
-                              await uploadFile(appData);
-                            }),
-                            SizedBox(width: 8),
                             generatingMessage
-                                ? buildIconButton(
-                                    Icons.stop,
-                                    () {
-                                      setState(() {
-                                        generatingMessage =
-                                            false; // Cambiar a false para detener la generación del mensaje
-                                      });
-                                    },
+                                ? Row(
+                                    children: [
+                                      buildIconButton(Icons.stop, () {
+                                        setState(() {
+                                          generatingMessage = false;
+                                        });
+                                      }),
+                                      SizedBox(width: 8),
+                                      CircularProgressIndicator(
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                          Colors.blue,
+                                        ),
+                                      ),
+                                    ],
                                   )
-                                : buildIconButton(Icons.send, () {
-                                    _sendMessage(appData);
-                                  }),
+                                : Row(
+                                    children: [
+                                      buildIconButton(Icons.send, () {
+                                        _sendMessage(appData);
+                                      }),
+                                      SizedBox(width: 8),
+                                      buildIconButton(Icons.file_upload,
+                                          () async {
+                                        await uploadFile(appData);
+                                      }),
+                                    ],
+                                  ),
                           ],
                         ),
                       ),
@@ -162,9 +224,35 @@ class _LayoutDesktopState extends State<LayoutDesktop> {
     );
   }
 
-  // Función para agregar mensaje y limpiar la barra de texto
-  // Método _sendMessage modificado
-  // Función para agregar mensaje y limpiar la barra de texto
+  Future<void> generateMessage(AppData appData, String mensaje) async {
+    int contador = 0;
+
+    // Variable booleana para controlar si se debe interrumpir el bucle
+    bool stopLoop = false;
+
+    for (int i = 0; i < mensaje.length; i++) {
+      if (stopLoop) {
+        break; // Salir del bucle si stopLoop es true
+      }
+
+      if (contador == 0) {
+        appData.addMessage(mensaje.substring(i));
+        contador++;
+      }
+      appData.addTextToMessage(posicionMensaje, mensaje[i]);
+      appData.notifyListeners();
+      _scrollToBottom();
+
+      // Esperar y verificar la variable stopLoop después de cada iteración
+      await Future.delayed(const Duration(milliseconds: 30), () {
+        if (generatingMessage == false) {
+          stopLoop = true;
+        }
+      });
+    }
+    posicionMensaje = posicionMensaje + 2;
+  }
+
   Future<void> _sendMessage(AppData appData) async {
     String texto = _textController.text;
     if (texto.isNotEmpty) {
@@ -185,43 +273,18 @@ class _LayoutDesktopState extends State<LayoutDesktop> {
 
       // Enviar la cadena JSON al servidor
       var response = await appData.sendTextToServer(appData.url, jsonString);
-      // Simular escritura de la respuesta letra por letra
-      int contador = 0;
-
       // Parsear el JSON de la respuesta
       Map<String, dynamic> jsonResponse = json.decode(response);
 
       // Obtener el mensaje del JSON de la respuesta
       String mensaje = jsonResponse["mensaje"];
 
-      // Variable booleana para controlar si se debe interrumpir el bucle
-      bool stopLoop = false;
+      await generateMessage(appData, mensaje);
 
-      for (int i = 0; i < mensaje.length; i++) {
-        if (stopLoop) {
-          break; // Salir del bucle si stopLoop es true
-        }
-
-        if (contador == 0) {
-          appData.addMessage(mensaje.substring(i));
-          contador++;
-        }
-        appData.addTextToMessage(posicionMensaje, mensaje[i]);
-        appData.notifyListeners();
-        _scrollToBottom();
-
-        // Esperar y verificar la variable stopLoop después de cada iteración
-        await Future.delayed(const Duration(milliseconds: 20), () {
-          if (generatingMessage == false) {
-            stopLoop = true;
-          }
-        });
-      }
-      posicionMensaje = posicionMensaje + 2;
+      setState(() {
+        generatingMessage = false;
+      });
     }
-    setState(() {
-      generatingMessage = false;
-    });
   }
 
 // Función para crear un botón con icono
