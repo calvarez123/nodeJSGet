@@ -25,6 +25,7 @@ class _LayoutDesktopState extends State<LayoutDesktop> {
   static ScrollController _scrollController = ScrollController();
 
   int posicionMensaje = 1;
+  bool generatingMessage = false;
   // Return a custom button
   Widget buildCustomButton(String buttonText, VoidCallback onPressedAction) {
     return SizedBox(
@@ -134,10 +135,19 @@ class _LayoutDesktopState extends State<LayoutDesktop> {
                               await uploadFile(appData);
                             }),
                             SizedBox(width: 8),
-                            buildIconButton(Icons.send, () {
-                              _sendMessage(appData);
-                              _scrollToBottom(); // Desplazar hacia abajo al enviar un mensaje
-                            }),
+                            generatingMessage
+                                ? buildIconButton(
+                                    Icons.stop,
+                                    () {
+                                      setState(() {
+                                        generatingMessage =
+                                            false; // Cambiar a false para detener la generación del mensaje
+                                      });
+                                    },
+                                  )
+                                : buildIconButton(Icons.send, () {
+                                    _sendMessage(appData);
+                                  }),
                           ],
                         ),
                       ),
@@ -158,6 +168,9 @@ class _LayoutDesktopState extends State<LayoutDesktop> {
   Future<void> _sendMessage(AppData appData) async {
     String texto = _textController.text;
     if (texto.isNotEmpty) {
+      setState(() {
+        generatingMessage = true;
+      });
       // Crear un JSON con la pregunta y el mensaje
       Map<String, dynamic> jsonBody = {
         "type": "test",
@@ -181,7 +194,14 @@ class _LayoutDesktopState extends State<LayoutDesktop> {
       // Obtener el mensaje del JSON de la respuesta
       String mensaje = jsonResponse["mensaje"];
 
+      // Variable booleana para controlar si se debe interrumpir el bucle
+      bool stopLoop = false;
+
       for (int i = 0; i < mensaje.length; i++) {
+        if (stopLoop) {
+          break; // Salir del bucle si stopLoop es true
+        }
+
         if (contador == 0) {
           appData.addMessage(mensaje.substring(i));
           contador++;
@@ -189,19 +209,26 @@ class _LayoutDesktopState extends State<LayoutDesktop> {
         appData.addTextToMessage(posicionMensaje, mensaje[i]);
         appData.notifyListeners();
         _scrollToBottom();
-        await Future.delayed(const Duration(
-            milliseconds:
-                20)); // Notificar a los escuchadores para actualizar la interfaz
+
+        // Esperar y verificar la variable stopLoop después de cada iteración
+        await Future.delayed(const Duration(milliseconds: 20), () {
+          if (generatingMessage == false) {
+            stopLoop = true;
+          }
+        });
       }
       posicionMensaje = posicionMensaje + 2;
     }
+    setState(() {
+      generatingMessage = false;
+    });
   }
-}
 
 // Función para crear un botón con icono
-Widget buildIconButton(IconData icon, VoidCallback onPressedAction) {
-  return IconButton(
-    onPressed: onPressedAction,
-    icon: Icon(icon),
-  );
+  Widget buildIconButton(IconData icon, VoidCallback onClick) {
+    return IconButton(
+      onPressed: onClick,
+      icon: Icon(icon),
+    );
+  }
 }
