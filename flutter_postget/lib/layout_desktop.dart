@@ -22,6 +22,9 @@ class LayoutDesktop extends StatefulWidget {
 class _LayoutDesktopState extends State<LayoutDesktop> {
   TextEditingController _textController = TextEditingController();
   TextEditingController _receivedMessageController = TextEditingController();
+  static ScrollController _scrollController = ScrollController();
+
+  int posicionMensaje = 1;
   // Return a custom button
   Widget buildCustomButton(String buttonText, VoidCallback onPressedAction) {
     return SizedBox(
@@ -59,22 +62,36 @@ class _LayoutDesktopState extends State<LayoutDesktop> {
     }
   }
 
+  static void _scrollToBottom() {
+    _scrollController.animateTo(
+      _scrollController.position.maxScrollExtent,
+      duration: const Duration(milliseconds: 10),
+      curve: Curves.easeOut,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     AppData appData = Provider.of<AppData>(context);
+
+    // Controlador de Scroll
+
+    // Función para desplazar la lista hacia abajo
 
     return MaterialApp(
       home: Scaffold(
         body: Center(
           child: Container(
-            width: 600, // Ajustar el ancho total del contenedor
+            width: 600,
+            height: 800,
             padding: const EdgeInsets.all(16.0),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 // Área de mensajes
                 Expanded(
                   child: ListView.builder(
+                    controller: _scrollController,
                     itemCount: appData.messages?.length ?? 0,
                     itemBuilder: (context, index) {
                       return ListTile(
@@ -84,21 +101,8 @@ class _LayoutDesktopState extends State<LayoutDesktop> {
                     },
                   ),
                 ),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: _receivedMessageController.text.length,
-                    itemBuilder: (context, index) {
-                      return ListTile(
-                        leading: Icon(Icons.android),
-                        title: Text(_receivedMessageController.text[index]),
-                      );
-                    },
-                  ),
-                ),
 
-                SizedBox(
-                    height:
-                        30), // Separación entre la lista de mensajes y el resto de los elementos
+                SizedBox(height: 16),
 
                 // Barra para poner texto
                 Row(
@@ -117,6 +121,7 @@ class _LayoutDesktopState extends State<LayoutDesktop> {
                                 controller: _textController,
                                 onSubmitted: (text) {
                                   _sendMessage(appData);
+                                  _scrollToBottom(); // Desplazar hacia abajo al enviar un mensaje
                                 },
                                 decoration: const InputDecoration(
                                   hintText: 'Escribe tu mensaje...',
@@ -124,17 +129,14 @@ class _LayoutDesktopState extends State<LayoutDesktop> {
                                 ),
                               ),
                             ),
-                            SizedBox(
-                                width:
-                                    8), // Separación entre la barra de texto y los botones
-                            // Botón para subir un archivo
+                            SizedBox(width: 8),
                             buildIconButton(Icons.file_upload, () async {
                               await uploadFile(appData);
                             }),
-                            SizedBox(width: 8), // Separación entre los botones
-                            // Botón de enviar
+                            SizedBox(width: 8),
                             buildIconButton(Icons.send, () {
                               _sendMessage(appData);
+                              _scrollToBottom(); // Desplazar hacia abajo al enviar un mensaje
                             }),
                           ],
                         ),
@@ -166,6 +168,7 @@ class _LayoutDesktopState extends State<LayoutDesktop> {
       String jsonString = json.encode(jsonBody);
 
       appData.addMessage(texto);
+      _textController.clear();
 
       // Enviar la cadena JSON al servidor
       var response = await appData.sendTextToServer(appData.url, jsonString);
@@ -177,22 +180,20 @@ class _LayoutDesktopState extends State<LayoutDesktop> {
 
       // Obtener el mensaje del JSON de la respuesta
       String mensaje = jsonResponse["mensaje"];
-      print(mensaje);
 
-      print(mensaje.length);
       for (int i = 0; i < mensaje.length; i++) {
         if (contador == 0) {
           appData.addMessage(mensaje.substring(i));
           contador++;
         }
-        appData.addTextToMessage(1, mensaje.substring(0, i + 1));
-
+        appData.addTextToMessage(posicionMensaje, mensaje[i]);
         appData.notifyListeners();
+        _scrollToBottom();
         await Future.delayed(const Duration(
             milliseconds:
-                10)); // Notificar a los escuchadores para actualizar la interfaz
+                20)); // Notificar a los escuchadores para actualizar la interfaz
       }
-      _textController.clear();
+      posicionMensaje = posicionMensaje + 2;
     }
   }
 }
